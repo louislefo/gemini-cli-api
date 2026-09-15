@@ -1,5 +1,11 @@
 # GEMINI-CLI-API: Gemini Chrome CDP Bridge & CLI
 
+[![CI Test Suite](https://github.com/louislefo/gemini-cli-api/actions/workflows/ci.yml/badge.svg)](https://github.com/louislefo/gemini-cli-api/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Playwright](https://img.shields.io/badge/Playwright-1.42+-2EAD33.svg?logo=playwright&logoColor=white)](https://playwright.dev)
+
 A local high-performance API and interactive terminal CLI built with **FastAPI** and **Playwright**, enabling you to drive an existing authenticated **Google Gemini Web** session in Google Chrome via the **Chrome DevTools Protocol (CDP)** on port `9222`.
 
 ---
