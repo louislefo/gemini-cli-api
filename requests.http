@@ -1,0 +1,90 @@
+### 1. General health check
+GET http://127.0.0.1:8000/health
+Accept: application/json
+
+### 2. Chrome CDP connection status & Gemini tab
+GET http://127.0.0.1:8000/cdp/status
+Accept: application/json
+
+### 3. Simple prompt (JSON response)
+POST http://127.0.0.1:8000/chat
+Content-Type: application/json
+
+{
+  "prompt": "Explain the concept of recursion in computer science with a simple example.",
+  "new_chat": false
+}
+
+### 4. Prompt starting a NEW conversation
+POST http://127.0.0.1:8000/chat
+Content-Type: application/json
+
+{
+  "prompt": "Start a fresh chat and list 3 key features of FastAPI.",
+  "new_chat": true
+}
+
+### 5. Prompt with SSE Streaming
+POST http://127.0.0.1:8000/chat/stream
+Content-Type: application/json
+
+{
+  "prompt": "Write a short dialogue between a developer and a compiler.",
+  "new_chat": false
+}
+
+### 6. OpenAI-compatible endpoint (Standard Chat Completion)
+POST http://127.0.0.1:8000/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "gemini-web",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a senior software architect."
+    },
+    {
+      "role": "user",
+      "content": "What are the core benefits of a modular architecture in Python?"
+    }
+  ],
+  "stream": false
+}
+
+### 7. OpenAI-compatible endpoint (Streaming Mode)
+POST http://127.0.0.1:8000/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "gemini-web",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a 6-line poem about outer space and distant stars."
+    }
+  ],
+  "stream": true
+}
+
+### 8. List available models
+GET http://127.0.0.1:8000/models
+Accept: application/json
+
+### 9. Switch active model
+POST http://127.0.0.1:8000/models/select
+Content-Type: application/json
+
+{
+  "model": "pro"
+}
+
+### 10. List conversation history
+GET http://127.0.0.1:8000/conversations
+Accept: application/json
+
+### 11. Get account usage quotas
+GET http://127.0.0.1:8000/usage
+Accept: application/json
+
+

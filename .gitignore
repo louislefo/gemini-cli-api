@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project specific
+.chrome_gemini_profile/
+.gemini_cli_history
+gemini_chat_*.md
+*.log
+
+gemini.md
