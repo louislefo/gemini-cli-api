@@ -1,4 +1,4 @@
-"""GEMINI-API CLI entrypoint script."""
+"""GEMINI-CLI-API entrypoint script."""
 
 from cli.main import main
 

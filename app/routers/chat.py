@@ -7,6 +7,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.dependencies import get_gemini_driver
 from app.schemas import (
+    AccountInfoResponse,
     ChatResponse,
     ConversationSelectResponse,
     ConversationsResponse,
@@ -116,6 +117,21 @@ async def get_usage(
             detail=f"Error fetching usage metrics: {exc}",
         ) from exc
 
+
+
+@router.get("/account", response_model=AccountInfoResponse)
+async def get_account(
+    driver: GeminiDriver = Depends(get_gemini_driver),
+) -> AccountInfoResponse:
+    """Retrieves the currently connected Google Account email, name, and plan tier."""
+    try:
+        data = await driver.get_account_info()
+        return AccountInfoResponse(**data)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching account info: {exc}",
+        ) from exc
 
 
 @router.post("/chat", response_model=ChatResponse)

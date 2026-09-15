@@ -58,3 +58,91 @@ def handle_usage() -> None:
     except Exception as exc:
         console.print(f"[red]Error fetching usage metrics:[/red] {exc}\n")
 
+
+def handle_account() -> None:
+    """Fetches and displays connected Google account details and subscription tier."""
+    console.print("\n[dim]Fetching connected Google Account details...[/dim]")
+    try:
+        acc = APIClient.fetch_account()
+        email = acc.get("email", "Unknown")
+        name = acc.get("name", "Unknown")
+        tier = acc.get("tier", "Free (Standard)")
+        authenticated = acc.get("authenticated", False)
+
+        table = Table(show_header=False, box=box.SIMPLE, expand=True)
+        table.add_column("Property", style="bold cyan", width=24)
+        table.add_column("Value", style="bold white")
+
+        table.add_row("Google Account", email if email != "Unknown" else "[dim]Not detected[/dim]")
+        table.add_row("Display Name", name if name != "Unknown" else "[dim]Not detected[/dim]")
+
+        tier_style = "bold magenta" if ("pro" in tier.lower() or "advanced" in tier.lower()) else "bold green"
+        table.add_row("Plan Tier", f"[{tier_style}]{tier}[/{tier_style}]")
+        table.add_row("Auth Status", "[bold green]Active & Authenticated[/bold green]" if authenticated else "[yellow]Unauthenticated[/yellow]")
+
+        panel = Panel(
+            table,
+            title="[bold cyan]Connected Google Account[/bold cyan]",
+            subtitle="[dim]Type /switch-account to log in with a different Google account[/dim]",
+            border_style="cyan",
+            box=box.ROUNDED,
+            padding=(1, 2),
+            expand=True,
+        )
+        console.print()
+        console.print(panel)
+        console.print()
+
+    except Exception as exc:
+        console.print(f"[red]Error fetching account details:[/red] {exc}\n")
+
+
+def handle_switch_account() -> None:
+    """Initiates account logout and interactive sign-in flow for a new Google account."""
+    import asyncio
+    import os
+    import shutil
+    import time
+    from auth import (
+        DEFAULT_CDP_PORT,
+        DEFAULT_PROFILE_DIR,
+        find_chrome_executable,
+        launch_chrome_process,
+        run_login_flow,
+        stop_chrome,
+    )
+
+    console.print("\n[bold yellow]Switching Google Account...[/bold yellow]")
+    console.print("[dim]1. Terminating background headless Chrome session...[/dim]")
+    stop_chrome(DEFAULT_CDP_PORT)
+    time.sleep(1.0)
+
+    profile_dir = os.path.abspath(DEFAULT_PROFILE_DIR)
+    if os.path.exists(profile_dir):
+        try:
+            shutil.rmtree(profile_dir)
+        except Exception:
+            shutil.rmtree(profile_dir, ignore_errors=True)
+    console.print("[dim]2. Resetting local profile session...[/dim]")
+
+    chrome_path = find_chrome_executable()
+    if not chrome_path:
+        console.print("[bold red]Google Chrome executable not found.[/bold red]\n")
+        return
+
+    login_ok = asyncio.run(run_login_flow(chrome_path, profile_dir, DEFAULT_CDP_PORT))
+    if login_ok:
+        console.print("[bold cyan]Relaunching background headless Chrome engine...[/bold cyan]")
+        launch_chrome_process(
+            chrome_path=chrome_path,
+            profile_dir=profile_dir,
+            port=DEFAULT_CDP_PORT,
+            headless=True,
+            url="https://gemini.google.com/app",
+        )
+        time.sleep(1.5)
+        console.print("[bold green]Account switched successfully! You can now send prompts.[/bold green]\n")
+    else:
+        console.print("[bold red]Account switch cancelled or timed out.[/bold red]\n")
+
+

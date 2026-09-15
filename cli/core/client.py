@@ -87,3 +87,15 @@ class APIClient:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=15) as response:
             return json.loads(response.read().decode("utf-8"))
+
+    @staticmethod
+    def fetch_account() -> dict[str, Any]:
+        """Fetches connected Google account details and subscription tier."""
+        try:
+            url = f"{API_BASE_URL}/account"
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=6) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception:
+            return {"email": "Unknown", "name": "Unknown", "tier": "Free (Standard)", "authenticated": False}
+

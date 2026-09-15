@@ -1,4 +1,4 @@
-# GEMINI-API: Gemini Chrome CDP Bridge & CLI
+# GEMINI-CLI-API: Gemini Chrome CDP Bridge & CLI
 
 A local high-performance API and interactive terminal CLI built with **FastAPI** and **Playwright**, enabling you to drive an existing authenticated **Google Gemini Web** session in Google Chrome via the **Chrome DevTools Protocol (CDP)** on port `9222`.
 
@@ -25,8 +25,7 @@ A local high-performance API and interactive terminal CLI built with **FastAPI**
 - Python 3.10+
 - Google Chrome installed
 
-### Step 1: Create Virtual Environment and Install Dependencies
-
+### Step 1: Create Virtual Environment and Install
 ```bash
 # Create virtual environment
 python -m venv .venv
@@ -34,46 +33,52 @@ python -m venv .venv
 # Activate (Windows PowerShell)
 .venv\Scripts\Activate.ps1
 
-# Install dependencies
-pip install -r requirements.txt
+# Install in editable mode to enable the global CLI command
+pip install -e .
 ```
 
 ---
 
 ## Quick Start Guide
 
-### Step 1: Launch Chrome with Remote Debugging
+### Launching the Application
 
-#### Option A: Using the provided script
-Double-click `scripts\launch_chrome.bat` or run in PowerShell:
+You can launch using the dedicated CLI command or python:
 ```powershell
-.\scripts\launch_chrome.ps1
+gemini-cli-api
 ```
+*(or `python run.py`)*
 
-#### Option B: Manual command line
-```cmd
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="%USERPROFILE%\.chrome_gemini_profile" https://gemini.google.com/app
+`run.py` automatically manages the entire lifecycle:
+1. **Virtual Environment**: Auto-detects and uses `.venv` without needing manual activation.
+2. **Session Verification**: Checks if your Google Gemini session is active in `~/.chrome_gemini_profile`.
+   - If not signed in, it displays a sign-in notification and opens Google Chrome to `https://gemini.google.com/app`. Once you log in, it detects your session, saves your profile, and closes the window.
+3. **Headless Engine**: Google Chrome is launched in modern `--headless=new` mode in the background on port `9222`.
+4. **Interactive Mode Selector**: Displays an interactive menu to choose your preferred mode:
+   - **`Both (API Server + Interactive CLI)`**: Starts the FastAPI server in the background and opens the interactive terminal CLI.
+   - **`Interactive CLI Only`**: Runs background API engine and starts the terminal CLI REPL directly.
+   - **`API Server Only`**: Runs FastAPI in the foreground on `http://127.0.0.1:8000` with Swagger UI at `http://127.0.0.1:8000/docs`.
+
+### Direct Command Flags (Optional)
+
+You can also bypass the menu directly via flags:
+```powershell
+gemini-cli-api --both     # Start background API + Interactive CLI
+gemini-cli-api --cli      # Start Interactive CLI directly
+gemini-cli-api --api      # Start Foreground API Server (http://127.0.0.1:8000)
+gemini-cli-api --logout   # Terminate Chrome, delete local session profile, and log out
 ```
-
-> **Note**: Log in to your Google Account on Gemini in this Chrome window. The profile is saved in `.chrome_gemini_profile`.
 
 ---
 
-### Step 2: Start the FastAPI Server
+### Authentication & Headless Management Tool (`auth.py`)
 
+A dedicated utility for managing browser authentication and headless processes:
 ```powershell
-.\.venv\Scripts\python.exe run.py
-```
-
-Interactive Swagger documentation is available at: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
----
-
-### Step 3: Launch the Interactive CLI
-
-In a separate terminal:
-```powershell
-.\.venv\Scripts\python.exe cli.py
+python auth.py --login      # Interactive 1-time Google account login
+python auth.py --status     # Check Chrome CDP and Gemini session status
+python auth.py --headless   # Start headless Chrome supervisor
+python auth.py --stop       # Terminate running Chrome instances on port 9222
 ```
 
 ---
@@ -83,6 +88,8 @@ In a separate terminal:
 | Command | Description |
 | :--- | :--- |
 | `/model [name]` | Interactive arrow-key selector or direct model switch (`pro`, `flash`, `flash-lite`, `thinking`) |
+| `/account` | Display connected Google account email, name, and plan tier (`Pro (Advanced)` / `Free (Standard)`) |
+| `/switch-account` | Switch Google Account (logs out and opens visible sign-in window) |
 | `/usage` | View current and weekly quota limits and reset schedules |
 | `/convs` | List previous saved conversations from Gemini history |
 | `/load [id]` | Interactive selector or direct resumption of a previous chat |
@@ -97,6 +104,19 @@ In a separate terminal:
 | `/help` | Show command help menu |
 | `/exit` | Exit session with metrics summary |
 
+---
+
+## Automated Test Suite
+
+A complete test suite is available under `tests/` to verify schemas, API endpoints, authentication, and CLI components:
+
+```bash
+# Run the test suite with formatted output
+python tests/runner.py
+
+# Or run via Python unittest
+python -m unittest discover tests
+```
 
 ---
 
@@ -138,7 +158,7 @@ curl -X POST http://127.0.0.1:8000/v1/chat/completions \
 ## Project Structure
 
 ```text
-geminiapi/
+gemini-cli-api/
 ├── app/                     # Backend FastAPI application
 │   ├── __init__.py
 │   ├── main.py              # FastAPI application and lifespan management
@@ -151,7 +171,7 @@ geminiapi/
 │   │   └── gemini_driver.py # Gemini DOM manipulation and response extraction
 │   └── routers/
 │       ├── __init__.py
-│       ├── chat.py          # /chat, /chat/stream, /models, /conversations, /usage
+│       ├── chat.py          # /chat, /chat/stream, /models, /conversations, /usage, /account
 │       └── health.py        # /health, /cdp/status
 ├── cli/                     # Modular interactive terminal CLI package
 │   ├── __init__.py
@@ -173,13 +193,22 @@ geminiapi/
 │       ├── chat.py          # Real-time streaming and sync messaging routines
 │       ├── conversations.py # History listing and chat resumption
 │       ├── models.py        # Model selector and switcher (/model)
-│       └── usage.py         # Account quotas and reset limits (/usage)
+│       └── usage.py         # Account quotas and Google account info (/usage, /account)
 ├── scripts/
 │   ├── launch_chrome.bat    # Windows Batch script to start Chrome on port 9222
 │   └── launch_chrome.ps1    # PowerShell script to start Chrome on port 9222
+├── tests/                   # Automated unit test suite
+│   ├── __init__.py
+│   ├── test_schemas.py      # Pydantic schema validation tests
+│   ├── test_api_endpoints.py# FastAPI REST endpoint integration tests
+│   ├── test_auth_and_cdp.py # CDP connection and auth workflow tests
+│   ├── test_cli_core.py     # CLI statistics, completion, client tests
+│   ├── test_cli_ui.py       # CLI UI table, banner, panel tests
+│   └── runner.py            # Rich test runner & summary reporter
+├── auth.py                  # Standalone authentication & headless Chrome manager
 ├── cli.py                   # Main CLI entrypoint script
-├── run.py                   # Server entrypoint with Windows Proactor loop support
-├── test_api.py              # Automated API verification test suite
+├── run.py                   # Unified orchestrator (auto-auth, headless, mode selection)
+├── pyproject.toml           # PEP 621 package and scripts configuration
 ├── requirements.txt         # Python dependencies
 └── README.md                # Documentation
 ```

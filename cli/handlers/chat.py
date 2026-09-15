@@ -15,7 +15,7 @@ from cli.ui.panels import render_error_panel, render_response_panel
 
 
 def send_message_stream(prompt: str, new_chat: bool = False, model: str | None = None) -> None:
-    """Sends a message to Gemini with a transient live preview and a clean structured final markdown panel."""
+    """Sends a message to Gemini and displays the response cleanly with completion metadata."""
     url = f"{API_BASE_URL}/chat/stream"
     payload = {"prompt": prompt, "new_chat": new_chat, "model": model}
     data_bytes = json.dumps(payload).encode("utf-8")
@@ -32,12 +32,9 @@ def send_message_stream(prompt: str, new_chat: bool = False, model: str | None =
 
     console.print()
     try:
-        with Live(
-            Panel(Text("Waiting for Gemini response...", style="dim"), title="[cyan]Generating[/cyan]", border_style="cyan", box=box.SIMPLE),
-            refresh_per_second=12,
-            transient=True,
-        ) as live:
-            with urllib.request.urlopen(req, timeout=180) as response:
+        with console.status("[bold cyan]Waiting for Gemini response...[/bold cyan]", spinner="dots") as status_indicator:
+            with urllib.request.urlopen(req, timeout=70) as response:
+                first_chunk = True
                 for raw_line in response:
                     line = raw_line.decode("utf-8").strip()
                     if line.startswith("data:"):
@@ -54,14 +51,10 @@ def send_message_stream(prompt: str, new_chat: bool = False, model: str | None =
                                 if "full_text" in data and data["full_text"]:
                                     full_text_result = data["full_text"]
 
-                                preview = accumulated_text[-1000:] if len(accumulated_text) > 1000 else accumulated_text
-                                live.update(
-                                    Panel(
-                                        Text(preview, style="white"),
-                                        title=f"[cyan]Generating ({len(accumulated_text)} chars)...[/cyan]",
-                                        border_style="cyan",
-                                        box=box.SIMPLE,
-                                    )
+                                if first_chunk:
+                                    first_chunk = False
+                                status_indicator.update(
+                                    f"[bold cyan]Receiving response ({len(accumulated_text)} chars)...[/bold cyan]"
                                 )
                             elif "error" in data:
                                 console.print(f"\n[bold red]Error: {data['error']}[/bold red]")
@@ -70,8 +63,11 @@ def send_message_stream(prompt: str, new_chat: bool = False, model: str | None =
 
         final_response = full_text_result if full_text_result else accumulated_text
         duration = time.time() - start_time
-        stats.record_interaction(prompt, final_response, duration)
-        render_response_panel(final_response, duration)
+        if final_response:
+            stats.record_interaction(prompt, final_response, duration)
+            render_response_panel(final_response, duration)
+        else:
+            render_error_panel("Received empty response from Gemini.")
 
     except urllib.error.HTTPError as err:
         try:
@@ -79,6 +75,8 @@ def send_message_stream(prompt: str, new_chat: bool = False, model: str | None =
             render_error_panel(f"HTTP Error {err.code}: {err_data.get('detail')}")
         except Exception:
             render_error_panel(f"HTTP Error {err.code}: {err.reason}")
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Generation cancelled by user.[/yellow]\n")
     except Exception as exc:
         render_error_panel(f"Communication Error: {exc}")
 
@@ -99,7 +97,7 @@ def send_message_sync(prompt: str, new_chat: bool = False, model: str | None = N
     start_time = time.time()
 
     try:
-        with urllib.request.urlopen(req, timeout=180) as response:
+        with urllib.request.urlopen(req, timeout=70) as response:
             result = json.loads(response.read().decode("utf-8"))
             duration = time.time() - start_time
             response_text = result.get("response", "")

@@ -1,4 +1,4 @@
-"""GEMINI-API CLI Package.
+"""GEMINI-CLI-API Package.
 
 Interactive, terminal-based AI assistant client communicating with the Gemini CDP Bridge.
 """

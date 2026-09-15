@@ -168,3 +168,13 @@ class HealthResponse(BaseModel):
     app_name: str
     version: str
 
+
+class AccountInfoResponse(BaseModel):
+    """Information regarding the connected Google Account and subscription tier."""
+
+    email: str = Field(default="Unknown", description="Connected Google account email")
+    name: str = Field(default="Unknown", description="Connected Google account display name")
+    tier: str = Field(default="Free (Standard)", description="Subscription plan tier (e.g. Pro, Advanced, Free)")
+    authenticated: bool = Field(default=False, description="Whether the session is currently authenticated")
+
+

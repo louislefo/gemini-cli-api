@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # Timeouts and intervals
     DEFAULT_TIMEOUT_SECONDS: int = Field(
-        default=180,
+        default=60,
         description="Maximum timeout in seconds for Gemini response generation",
     )
     PAGE_LOAD_TIMEOUT_MS: int = Field(

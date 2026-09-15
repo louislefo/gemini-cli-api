@@ -1,4 +1,4 @@
-# Command Guide: GEMINI-API (Chrome CDP Bridge & CLI)
+# Command Guide: GEMINI-CLI-API (Chrome CDP Bridge & CLI)
 
 This document contains all essential commands for installation, startup, execution, and testing of the FastAPI backend and interactive CLI connected to Google Gemini via Chrome CDP.
 
@@ -33,35 +33,43 @@ source .venv/Scripts/activate
 
 ---
 
-## 2. Launching Google Chrome in Remote Debugging Mode (Port 9222)
+---
 
-### Option A: Using the provided PowerShell script
+## 2. Running the Application
+
+### Single Command Unified Startup
 ```powershell
-.\scripts\launch_chrome.ps1
+gemini-cli-api
 ```
+*(or `python run.py`)*
 
-### Option B: Using the provided Batch script (CMD)
-```cmd
-.\scripts\launch_chrome.bat
+`gemini-cli-api` coordinates:
+1. Auto-switching to the project `.venv` interpreter if needed.
+2. Checking Google Gemini authentication in `~/.chrome_gemini_profile`.
+3. Starting background headless Google Chrome on port `9222`.
+4. Prompting you to select your preferred startup mode:
+   - **`Both (API Server + Interactive CLI)`**: Background FastAPI server + foreground interactive CLI.
+   - **`Interactive CLI Only`**: Background API engine + foreground interactive CLI REPL.
+   - **`API Server Only`**: Foreground FastAPI server (`http://127.0.0.1:8000`).
+
+### Direct Mode Flags:
+```powershell
+gemini-cli-api --both     # Start background API + Interactive CLI
+gemini-cli-api --cli      # Start Interactive CLI directly
+gemini-cli-api --api      # Start Foreground API Server
+gemini-cli-api --logout   # Terminate Chrome, delete local profile, and log out
 ```
-
-### Option C: Direct Command Line (CMD / PowerShell)
-```cmd
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="%USERPROFILE%\.chrome_gemini_profile" https://gemini.google.com/app
-```
-
-> **Important**: Sign in to your Google Account on Gemini in this Chrome window on the first run. The session profile will be persisted in `%USERPROFILE%\.chrome_gemini_profile`.
 
 ---
 
-## 3. Starting the FastAPI Server
+## 3. Dedicated Authentication & Maintenance (`auth.py`)
 
-### Recommended Launch Command (Windows):
 ```powershell
-.\.venv\Scripts\python.exe run.py
+python auth.py --login      # Interactive 1-time Google account login
+python auth.py --status     # Check Chrome CDP and Gemini session status
+python auth.py --headless   # Start headless Chrome supervisor
+python auth.py --stop       # Stop running Chrome instances on port 9222
 ```
-
-> **Windows Note**: Running with standard `uvicorn --reload` under Windows forces a `Selector` event loop incompatible with Playwright subprocesses. The `run.py` entrypoint configures `ProactorEventLoop` cleanly without conflicts.
 
 ---
 
@@ -91,6 +99,8 @@ A rich terminal interface with auto-completion, persistent command history, real
 | Command | Description |
 | :--- | :--- |
 | `/model [name]` | Interactive arrow-key selector or direct switch (`pro`, `flash`, `flash-lite`, `thinking`) |
+| `/account` | Show connected Google Account email, name, and plan tier (`Pro` / `Free`) |
+| `/switch-account` | Switch Google Account (logs out & opens visible sign-in window) |
 | `/usage` | View current and weekly quota limits, plan tier (e.g., PRO), and reset schedules |
 | `/convs` | List saved conversations from Gemini sidebar history |
 | `/load [id]` | Interactive selector or direct resumption of a previous chat |
@@ -106,6 +116,17 @@ A rich terminal interface with auto-completion, persistent command history, real
 | `/exit` | Display session summary and exit application |
 
 ---
+
+## 6. Automated Unit Tests
+
+Execute the automated test suite with the built-in test runner:
+```powershell
+python tests/runner.py
+```
+or with Python `unittest`:
+```powershell
+python -m unittest discover tests
+```
 
 
 ## 6. API Test Commands (cURL)

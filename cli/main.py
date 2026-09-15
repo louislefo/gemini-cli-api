@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 
 if sys.platform == "win32":
     try:
@@ -21,7 +22,7 @@ from cli.core.stats import stats
 from cli.handlers.chat import export_history, send_message_stream, send_message_sync
 from cli.handlers.conversations import handle_conversations, handle_load
 from cli.handlers.models import handle_models
-from cli.handlers.usage import handle_usage
+from cli.handlers.usage import handle_account, handle_switch_account, handle_usage
 from cli.ui.banners import print_banner
 from cli.ui.panels import render_exit_panel
 
@@ -33,10 +34,12 @@ from cli.ui.tables import (
 )
 
 
-def main() -> None:
+def main(clear_screen: bool = True, show_banner: bool = True) -> None:
     """Main CLI application loop."""
-    os.system("cls" if os.name == "nt" else "clear")
-    print_banner()
+    if clear_screen:
+        os.system("cls" if os.name == "nt" else "clear")
+    if show_banner:
+        print_banner()
 
     completer = SlashCommandCompleter()
     session: PromptSession = PromptSession(
@@ -63,12 +66,10 @@ def main() -> None:
             if not user_input:
                 continue
 
-
             cmd_lower = user_input.lower()
 
             if cmd_lower in ("/exit", "/quit"):
-                stats.print_summary()
-                render_exit_panel()
+                render_exit_panel(stats)
                 break
 
             if cmd_lower == "/help":
@@ -96,6 +97,14 @@ def main() -> None:
                 parts = user_input.split(maxsplit=1)
                 target = parts[1].strip() if len(parts) > 1 else None
                 handle_models(target_model=target)
+                continue
+
+            if cmd_lower in ("/account", "/whoami", "/user", "/email"):
+                handle_account()
+                continue
+
+            if cmd_lower in ("/switch-account", "/switch", "/logout", "/login"):
+                handle_switch_account()
                 continue
 
             if cmd_lower in ("/usage", "/quota", "/limit", "/limits"):
@@ -160,8 +169,7 @@ def main() -> None:
                 send_message_sync(user_input, new_chat=is_new)
 
         except (KeyboardInterrupt, EOFError):
-            console.print("\n[dim]Interruption detected.[/dim]")
-            stats.print_summary()
+            render_exit_panel(stats)
             break
         except Exception as exc:
             console.print(f"\n[bold red]Unexpected error:[/bold red] {exc}\n")

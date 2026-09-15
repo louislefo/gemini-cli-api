@@ -14,6 +14,8 @@ def render_help_table() -> None:
     table.add_column("Description", style="white")
 
     table.add_row("/model [name]", "Interactive arrow-key selector or direct model switch (flash, pro, ...)")
+    table.add_row("/account", "Show connected Google Account email, name, and plan tier (Pro/Free)")
+    table.add_row("/switch-account", "Switch Google Account (log out & open visible sign-in window)")
     table.add_row("/usage", "Display current & weekly quota usage limits and reset times (PRO)")
     table.add_row("/convs", "List previous conversations saved on Gemini")
     table.add_row("/load [id]", "Interactive arrow-key selector or direct resume of a past chat")

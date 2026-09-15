@@ -1,4 +1,4 @@
-"""Configuration and constants for the GEMINI-API CLI."""
+"""Configuration and constants for the GEMINI-CLI-API package."""
 
 import os
 from prompt_toolkit.styles import Style as PTStyle
@@ -12,6 +12,9 @@ console = Console()
 
 SLASH_COMMANDS = [
     "/help",
+    "/account",
+    "/switch-account",
+    "/logout",
     "/model",
     "/usage",
     "/convs",

@@ -198,3 +198,90 @@ def select_conversation_interactive(convs_list: list[dict]) -> Optional[dict]:
     except (KeyboardInterrupt, Exception):
         return None
 
+
+def select_mode_interactive() -> str:
+    """Displays an interactive menu to choose startup mode: API, CLI, or Both."""
+    modes = [
+        {
+            "id": "both",
+            "name": "Both (API Server + Interactive CLI)",
+            "description": "Hosts the FastAPI API in background and opens the interactive CLI REPL.",
+        },
+        {
+            "id": "cli",
+            "name": "Interactive CLI Only",
+            "description": "Runs background API engine and immediately starts the terminal CLI.",
+        },
+        {
+            "id": "api",
+            "name": "API Server Only",
+            "description": "Runs FastAPI in the foreground (http://127.0.0.1:8000 / Swagger UI).",
+        },
+        {
+            "id": "switch_account",
+            "name": "Switch Google Account",
+            "description": "Log out and open visible sign-in window to connect another Google account.",
+        },
+    ]
+
+    selected_idx = 0
+
+    def render_table(cur_idx: int) -> Panel:
+        tbl = Table(show_header=True, header_style="bold cyan", box=box.SIMPLE, expand=True)
+        tbl.add_column(" ", width=2)
+        tbl.add_column("#", width=3, style="dim")
+        tbl.add_column("Mode", style="bold white", width=38)
+        tbl.add_column("Description", style="dim")
+
+        for i, m in enumerate(modes):
+            is_cursor = (i == cur_idx)
+            cursor_str = "[bold cyan]>[/bold cyan]" if is_cursor else " "
+            row_num = f"{i + 1}"
+            name = m["name"]
+            desc = m["description"]
+
+            if is_cursor:
+                tbl.add_row(
+                    cursor_str,
+                    f"[bold cyan]{row_num}[/bold cyan]",
+                    f"[bold yellow]{name}[/bold yellow]",
+                    f"[bold white]{desc}[/bold white]",
+                    style="on grey23",
+                )
+            else:
+                tbl.add_row(cursor_str, row_num, name, desc)
+
+        return Panel(
+            tbl,
+            title="[bold cyan]Choose Startup Mode (Up/Down arrows, Enter, or 1-4)[/bold cyan]",
+            subtitle="[dim]Select how you want to run GEMINI-CLI-API or switch account[/dim]",
+            border_style="cyan",
+            box=box.ROUNDED,
+            padding=(1, 2),
+            expand=True,
+        )
+
+    try:
+        with Live(render_table(selected_idx), refresh_per_second=20, transient=True) as live:
+            while True:
+                key = _read_key()
+                if key == "UP":
+                    selected_idx = (selected_idx - 1) % len(modes)
+                    live.update(render_table(selected_idx))
+                elif key == "DOWN":
+                    selected_idx = (selected_idx + 1) % len(modes)
+                    live.update(render_table(selected_idx))
+                elif key == "ENTER":
+                    return modes[selected_idx]["id"]
+                elif key in ("1", "2", "3", "4"):
+                    digit_idx = int(key) - 1
+                    if 0 <= digit_idx < len(modes):
+                        return modes[digit_idx]["id"]
+                elif key.lower() == "s":
+                    return "switch_account"
+    except KeyboardInterrupt:
+        raise
+    except Exception:
+        return "both"
+
+

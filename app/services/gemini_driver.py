@@ -10,11 +10,11 @@ logger = logging.getLogger("gemini_cdp.driver")
 
 JS_MONITOR_SCRIPT = """
 () => {
-    // 1. Détection de l'état de génération via bouton Stop ou indicateurs de chargement
+    // 1. Detection of generation state via Stop button or progress animations
     const stopBtn = document.querySelector("button[aria-label*='Arrêter'], button[aria-label*='Stop'], button[aria-label*='Interrompre'], button.stop-button, [data-test-id='stop-button'], mat-icon[fonticon='stop']");
     const isStopVisible = !!(stopBtn && (stopBtn.offsetWidth > 0 || stopBtn.offsetHeight > 0));
 
-    const loading = document.querySelector("mat-progress-bar, .loading-dots, [aria-label*='Chargement'], [aria-label*='Loading'], .sparkle-container");
+    const loading = document.querySelector("mat-progress-bar, .loading-dots, [aria-label*='Chargement en cours'], [aria-label*='Generating'], bard-sparkle-animation, .animate-spin");
     const isLoadingVisible = !!(loading && (loading.offsetWidth > 0 || loading.offsetHeight > 0));
 
     const sendBtn = document.querySelector("button[aria-label*='Envoyer'], button[aria-label*='Send'], button.send-button");
@@ -22,7 +22,7 @@ JS_MONITOR_SCRIPT = """
 
     const is_generating = isStopVisible || isLoadingVisible;
 
-    // 2. Recherche stricte des conteneurs de réponse individuels
+    // 2. Locate response containers
     let responseElements = document.querySelectorAll("model-response");
     if (responseElements.length === 0) {
         responseElements = document.querySelectorAll("div[data-test-id='model-response']");
@@ -249,19 +249,19 @@ class GeminiDriver:
     def __init__(self, manager: CDPManager = cdp_manager) -> None:
         self.manager = manager
 
-    async def _find_input_locator(self, page: Page) -> Optional[Locator]:
+    async def _find_input_locator(self, page: Page, timeout_ms: int = 3500) -> Optional[Locator]:
         """Finds the active text input element in the Gemini web interface."""
         for selector in settings.INPUT_SELECTORS:
             try:
                 locator = page.locator(selector).first
-                if await locator.is_visible(timeout=800):
+                if await locator.is_visible(timeout=timeout_ms):
                     return locator
             except Exception:
                 continue
 
         try:
             locator = page.locator("[contenteditable='true']").first
-            if await locator.is_visible(timeout=800):
+            if await locator.is_visible(timeout=1000):
                 return locator
         except Exception:
             pass
@@ -627,6 +627,43 @@ class GeminiDriver:
             finally:
                 await page.close()
 
+    async def get_account_info(self) -> dict:
+        """Retrieves currently connected Google Account email, name, and plan tier."""
+        async with self.manager.lock:
+            page = await self.manager.get_or_create_gemini_page()
+            await page.bring_to_front()
+            info = await page.evaluate("""
+            () => {
+                let email = '';
+                let name = '';
+                let tier = 'Free (Standard)';
+
+                // 1. Account profile icon / button
+                const accBtn = document.querySelector("[aria-label*='Compte Google'], [aria-label*='Google Account'], [aria-label*='@'], a[href*='accounts.google.com'], button[data-test-id='user-profile-button']");
+                const aria = accBtn ? (accBtn.getAttribute('aria-label') || '') : '';
+                const emailMatch = aria.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/);
+                if (emailMatch) email = emailMatch[1];
+
+                const nameMatch = aria.match(/(?:Compte Google|Google Account)\\s*:\\s*([^(\\n]+)/i);
+                if (nameMatch) name = nameMatch[1].trim();
+
+                // 2. Subscription / Plan Tier detection
+                const logoText = document.body.innerText.slice(0, 1500);
+                const advBadge = document.querySelector("[aria-label*='Advanced'], [aria-label*='Pro'], .subscription-badge, .tier-pill, mat-chip");
+                if (advBadge || /gemini advanced/i.test(logoText) || /advanced/i.test(document.title)) {
+                    tier = 'Pro (Advanced)';
+                }
+
+                return {
+                    email: email || 'Unknown',
+                    name: name || (email ? email.split('@')[0] : 'Unknown'),
+                    tier: tier,
+                    authenticated: !!email,
+                };
+            }
+            """)
+            return info
+
     async def send_prompt(
         self,
         prompt: str,
@@ -675,7 +712,7 @@ class GeminiDriver:
                 if generation_started and current_count > initial_count and current_text:
                     if current_text == last_text and not is_generating:
                         stable_ticks += 1
-                        required_ticks = 10 if (has_actions and is_send_enabled) else 30
+                        required_ticks = 2 if has_actions else (4 if is_send_enabled else 8)
                         if stable_ticks >= required_ticks:
                             logger.info("Generation completed successfully.")
                             return current_text
@@ -737,9 +774,11 @@ class GeminiDriver:
                         last_text = current_text
                         stable_ticks = 0
                         yield (chunk, current_text)
-                    elif len(current_text) > len(last_text):
+                    elif len(current_text) != len(last_text):
+                        # Text updated or reformatted (e.g. Markdown code block enclosed)
                         common_len = 0
-                        for i in range(min(len(last_text), len(current_text))):
+                        min_l = min(len(last_text), len(current_text))
+                        for i in range(min_l):
                             if last_text[i] == current_text[i]:
                                 common_len += 1
                             else:
@@ -749,13 +788,18 @@ class GeminiDriver:
                         stable_ticks = 0
                         if chunk:
                             yield (chunk, current_text)
+                        else:
+                            yield ("", current_text)
                     elif current_text == last_text and not is_generating:
                         stable_ticks += 1
-                        required_ticks = 8 if (has_actions and is_send_enabled) else 25
+                        required_ticks = 2 if has_actions else (4 if is_send_enabled else 8)
                         if stable_ticks >= required_ticks:
                             break
 
                 await asyncio.sleep(poll_interval)
+
+            if last_text:
+                yield ("", last_text)
 
 
 gemini_driver = GeminiDriver(cdp_manager)
