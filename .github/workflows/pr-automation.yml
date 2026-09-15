@@ -1,0 +1,29 @@
+name: Pull Request Review & Helper Agent
+
+on:
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  pr_helper:
+    name: PR Welcome and Checklist Agent
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Welcome Contributor and Post PR Checklist
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            const comment = `Hello @${author},\n\nThank you for submitting this Pull Request to **GEMINI-CLI-API**!\n\n### Automated PR Verification Checklist:\n- [ ] All 52 automated tests pass locally (\`python tests/runner.py\`).\n- [ ] New features include corresponding unit tests in the \`tests/\` folder.\n- [ ] Code follows PEP 8 standards and has zero emojis in terminal outputs.\n- [ ] No personal credentials or \`.env\` files are included.\n\nThe automated CI test suite will execute shortly across all supported platforms (Ubuntu, Windows) and Python versions (3.10, 3.11, 3.12). A maintainer will review your changes soon!`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: comment
+            });

@@ -1,0 +1,52 @@
+name: Issue Triage & Welcome Agent
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    name: Triage and Label Issue
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Auto-label based on title keywords
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const labelsToAdd = [];
+
+            if (title.includes('bug') || body.includes('reproduce') || body.includes('error') || body.includes('traceback')) {
+              labelsToAdd.push('bug');
+            }
+            if (title.includes('feat') || title.includes('enhancement') || title.includes('add') || body.includes('feature request')) {
+              labelsToAdd.push('enhancement');
+            }
+            if (title.includes('doc') || title.includes('readme') || body.includes('documentation')) {
+              labelsToAdd.push('documentation');
+            }
+            if (title.includes('help') || title.includes('question') || title.includes('how to')) {
+              labelsToAdd.push('question');
+            }
+
+            if (labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labelsToAdd
+              });
+            }
+
+            const welcomeMessage = `Hello @${issue.user.login},\n\nThank you for opening this issue! Our team and automated agents will review it shortly.\n\n- **Bugs**: Please make sure you have included your OS version, Python version, Chrome version, and full terminal log output.\n- **Feature Requests**: Provide clear examples or mockups of the proposed enhancement.\n\nWe appreciate your contribution to GEMINI-CLI-API!`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: welcomeMessage
+            });
