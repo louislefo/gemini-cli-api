@@ -25,35 +25,47 @@ A local high-performance API and interactive terminal CLI built with **FastAPI**
 
 ---
 
-## Installation
+## Quick Install & 1-Command Usage
 
-### Prerequisites
-- Python 3.10+
-- Google Chrome installed
-
-### Step 1: Create Virtual Environment and Install
+### 1. Install with a single command
 ```bash
-# Create virtual environment
-python -m venv .venv
-
-# Activate (Windows PowerShell)
-.venv\Scripts\Activate.ps1
-
-# Install in editable mode to enable the global CLI command
-pip install -e .
+pip install git+https://github.com/louislefo/gemini-cli-api.git
 ```
+*(Or if using `pipx`: `pipx install git+https://github.com/louislefo/gemini-cli-api.git`)*
+
+### 2. Run the application
+```bash
+gemini-cli-api
+```
+
+### What happens automatically:
+1. **Google Account Sign-In**: On first launch, a visible Chrome window opens directly to Google Sign-In.
+2. **Instant Connection**: As soon as you log in, the window closes automatically within 0.3s and saves your session.
+3. **Interactive Mode**: The banner displays your connected email and plan tier (`[Pro (Advanced)]` or `[Free (Standard)]`), and lets you choose:
+   - **`[1] Both (API Server + Interactive CLI)`**
+   - **`[2] Interactive CLI Only`**
+   - **`[3] API Server Only (FastAPI & Swagger UI)`**
+   - **`[4] Switch Google Account`**
 
 ---
 
-## Quick Start Guide
+## Alternative: Local Clone & Setup
 
-### Launching the Application
+```bash
+# 1. Clone repository
+git clone https://github.com/louislefo/gemini-cli-api.git
+cd gemini-cli-api
 
-You can launch using the dedicated CLI command or python:
-```powershell
+# 2. Create and activate virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1  # Windows PowerShell (or: source .venv/bin/activate on Linux/macOS)
+
+# 3. Install in editable mode
+pip install -e .
+
+# 4. Start application
 gemini-cli-api
 ```
-*(or `python run.py`)*
 
 `run.py` automatically manages the entire lifecycle:
 1. **Virtual Environment**: Auto-detects and uses `.venv` without needing manual activation.
